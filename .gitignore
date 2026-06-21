@@ -1,22 +1,55 @@
-# Environments and Secrets
-backend/.env
-backend/venv/
+# =========================
+# Python / Django (Backend)
+# =========================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# Dynamic AI Sandbox execution folders
-backend/runs/
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
 
-# Node/React Frontend
-**/node_modules/
-**/dist/
-**/build/
-.eslintcache
+# Environment Variables
+.env
+.env.*
 
-# Operating System Files
+# SQLite Database (if used locally instead of PostgreSQL)
+db.sqlite3
+db.sqlite3-journal
+
+# Django Media / Static Files
+Stage1/backend/media/
+Stage1/backend/staticfiles/
+Stage1/backend/static/
+
+# =========================
+# Node.js / React (Frontend)
+# =========================
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Build artifacts
+dist/
+build/
+Stage1/frontend/dist/
+Stage1/frontend/build/
+
+# Vite
+.vite/
+
+# =========================
+# System / IDE
+# =========================
 .DS_Store
 Thumbs.db
-
-# IDE and Editor folders
-.vscode/
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific ignores (if any generated data/scratch files)
+scratch/

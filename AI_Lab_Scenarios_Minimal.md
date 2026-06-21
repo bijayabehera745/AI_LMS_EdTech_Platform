@@ -41,7 +41,7 @@
 - **The Flood:** Overwatered plants that actually stopped growing or died.
 - **The Cactus:** Data from a totally different plant that barely needs water.
 
-**The Takeaway:** Mathematical lines go on forever, but nature doesn't. Students learn that more water doesn't infinitely equal a taller plant.
+**The Takeaway :** Mathematical lines go on forever, but nature doesn't. Students learn that more water doesn't infinitely equal a taller plant.
 
 **Try It Out:** Track your own gardening attempts and input the watering amounts to see the AI's growth predictions.
 
