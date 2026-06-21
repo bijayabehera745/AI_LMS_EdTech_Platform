@@ -1,119 +1,105 @@
-# Dynamic Multi-Agent AI Sandbox
+# AI Laboratory: Dynamic Model Selection (Stage 1)
 
-A proof-of-concept architecture for a dynamic, LLM-orchestrated execution engine. This system leverages a lightweight LLM acting as a routing agent to classify user intents and dispatch tasks to specialized, isolated Docker sandboxes.
-
-It allows users to upload files (images, CSVs) and provide natural language prompts. The system dynamically writes the necessary Python code, executes it securely in an ephemeral container with no internet access, and returns the processed output (annotated images, graphs, and terminal logs) back to a React frontend.
-
----
+This project is an interactive, sandbox-driven educational platform designed to teach students (Class 6-12) the fundamentals of Artificial Intelligence. It features a dual-login architecture, a modular pedagogical dashboard, and dynamic data variant selection for Regression, Classification, and Neural Network models.
 
 ## Architecture Overview
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | React (Vite) — handles multipart form data (text prompts + file uploads) |
-| **Backend** | FastAPI — API Gateway managing ephemeral volume mounts and container lifecycles |
-| **Orchestrator** | Gemini 2.5 Flash API — handles intent routing and domain-specific code generation |
-| **Execution Engine** | Isolated Docker containers tailored for specific tasks |
-
-### Sandboxes
-
-- `yolo-sandbox` — Object detection using Ultralytics YOLOv8
-- `mobilenet-sandbox` — Image classification using PyTorch MobileNetV2
-- `data-sandbox` — Time-series forecasting using Pandas and Scikit-Learn
+The project is split into two main components:
+*   **Backend (Django + Django REST Framework):** Handles user authentication, manages the "Scenarios" and "Data Variants" catalogs, generates synthetic data on the fly, and uses the Gemini LLM to securely execute machine learning code inside an isolated Docker sandbox.
+*   **Frontend (React + Vite):** A minimalist, pure Single-Page Application (SPA) styled with Vanilla CSS and Glassmorphism. It features a 4-pillar educational dashboard and a visual "Prediction Engine" workspace where students can plot and interpret data before running ML models.
 
 ---
 
-## Prerequisites
+## 🛠️ Prerequisites
 
-Ensure the following are installed before proceeding:
-
-- Python 3.10+
-- Node.js (v18+) & npm
-- Docker Desktop (must be running in the background)
-- Google Gemini API Key
+Before you begin, ensure you have the following installed on your machine:
+*   **Python 3.10+**
+*   **Node.js 18+** (with npm)
+*   **Docker** (Required for the `classification-sandbox` image used to execute the student models securely).
 
 ---
 
-## Setup
+## 🚀 Setup Instructions
 
-### 1. Clone and Configure Environment
+### 1. Backend Setup (Django)
 
-1. Navigate to the `backend` folder.
-2. Create a file named `.env`.
-3. Add your API key:
-
-```env
-GEMINI_API_KEY=your_actual_api_key_here
+Open a terminal and navigate to the backend directory:
+```bash
+cd Stage1/backend
 ```
 
-### 2. Build the Docker Sandboxes
+**Create and activate a virtual environment:**
+*   *Windows:* `python -m venv venv` and `.\venv\Scripts\activate`
+*   *Mac/Linux:* `python3 -m venv venv` and `source venv/bin/activate`
 
-The system relies on pre-built, domain-specific Docker images. Build them locally before starting the backend.
-
+**Install dependencies:**
 ```bash
-cd sandbox
-
-# Object Detection environment
-docker build -t yolo-sandbox -f Dockerfile.yolo .
-
-# Image Classification environment
-docker build -t mobilenet-sandbox -f Dockerfile.mobilenet .
-
-# Data Science environment
-docker build -t data-sandbox -f Dockerfile.data .
-```
-
-> **Note:** This step may take a few minutes as it downloads PyTorch and other heavy dependencies.
-
-### 3. Start the Backend Server
-
-```bash
-cd backend
-
-# Create and activate a virtual environment
-python -m venv venv
-
-# On Windows:
-venv\Scripts\activate
-
-# On Mac/Linux:
-source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Start the server
-uvicorn main:app --reload
 ```
 
-The backend will be listening at `http://127.0.0.1:8000`.
+**Environment Variables:**
+Create a `.env` file at the root of the project (next to this README) and add your database and API keys:
+```env
+DATABASE_URL="postgresql://<user>:<password>@<host>/<db>"
+GEMINI_API_KEY="your_google_gemini_key_here"
+DJANGO_SECRET_KEY="your_secret_key"
+```
 
-### 4. Start the Frontend
-
+**Run Database Migrations:**
 ```bash
-cd frontend
+python manage.py migrate
+```
 
+**Seed the Database (Important):**
+The UI requires the scenarios and variants to exist in the database. Run the seeder to populate the catalog:
+```bash
+python manage.py seed_scenarios
+```
+
+**Create an Admin / Test Account:**
+Create a superuser to access both the Student and Admin portals:
+```bash
+python manage.py createsuperuser
+```
+
+**Start the Backend Server:**
+```bash
+python manage.py runserver
+```
+*(The backend runs on `http://localhost:8000`)*
+
+---
+
+### 2. Frontend Setup (React/Vite)
+
+Open a **second terminal window** and navigate to the frontend directory:
+```bash
+cd Stage1/frontend
+```
+
+**Install npm packages:**
+```bash
 npm install
+```
+
+**Start the Frontend Development Server:**
+```bash
 npm run dev
 ```
-
-Open your browser at the local address shown by Vite (usually `http://localhost:5173`).
+*(The frontend runs on `http://localhost:5173`)*
 
 ---
 
-## Testing the Agents
+## 🧪 Testing and Usage
 
-### Test 1 — Object Detection (YOLO)
+1.  Open `http://localhost:5173` in your browser.
+2.  Use the toggle switch on the Login screen to select **Student**.
+3.  Log in using the email and password you created via the `createsuperuser` command.
+4.  You will land on the **Student Dashboard**. Click on the **Prediction Engine** module.
+5.  Select a model from the left sidebar (e.g., Regression).
+6.  Select a scenario (e.g., The Haunted House Price Predictor).
+7.  Click on one of the **Data Variant Cards** (e.g., "The Missing Roofs").
+8.  Review the plotted graph and the **Data Story** interpretation panel.
+9.  Click **Run Model** to trigger the backend execution and view the AI's explanation of the results!
 
-- **Upload:** Any image containing multiple objects (people, cars, electronics)
-- **Prompt:** `Detect all objects in this image. Draw bounding boxes around them and print their coordinates.`
-
-### Test 2 — Image Classification (MobileNet)
-
-- **Upload:** A clear image of a single subject (e.g., a dog, a coffee cup)
-- **Prompt:** `Classify this image. Print the top 3 predicted class names.`
-
-### Test 3 — Time-Series Forecasting (Data Science)
-
-- **Upload:** A CSV file named `campus_toto_demand.csv` with columns `day` and `rides`, containing at least 10 rows of data
-- **Prompt:** `Read the dataset. Use sklearn LinearRegression to train a model predicting 'rides' based on the 'day'. Forecast the demand for days 11, 12, and 13. Plot the historical data points and a line representing the regression forecast, and explicitly save the plot.`
+*(Note: You can also use the login toggle to sign in as an **Admin** to view the structural placeholder for the Stage 2 Admin portal).*
