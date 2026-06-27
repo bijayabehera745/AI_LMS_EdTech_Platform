@@ -1,5 +1,5 @@
 import os
-from openai import OpenAI
+from openai import AsyncOpenAI
 from django.conf import settings
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Annotated
@@ -36,7 +36,7 @@ def get_combined_input(state: AgentState, incoming_edges: list) -> str:
 
 # Node Factory: Text Input
 def make_node_text_input(node_id, node_data):
-    def node_text_input(state: AgentState):
+    async def node_text_input(state: AgentState):
         print(f"--- 📝 Executing Text Input ({node_id}) ---")
         user_prompt = node_data.get('text', '')
         if not user_prompt:
@@ -46,7 +46,7 @@ def make_node_text_input(node_id, node_data):
 
 # Node Factory: Vision Scanner (File Upload)
 def make_node_vision_scanner(node_id, node_data):
-    def node_vision_scanner(state: AgentState):
+    async def node_vision_scanner(state: AgentState):
         print(f"--- 📸 Executing Vision Scanner ({node_id}) ---")
         file_base64 = node_data.get('fileBase64')
         file_type = node_data.get('fileType', '')
@@ -66,12 +66,12 @@ def make_node_vision_scanner(node_id, node_data):
 
             if file_type.startswith('image/'):
                 # Send to LLM for image analysis
-                client = OpenAI(
+                client = AsyncOpenAI(
                     base_url="https://openrouter.ai/api/v1",
                     api_key=os.environ.get("OPENROUTER_API_KEY", "")
                 )
                 
-                response = client.chat.completions.create(
+                response = await client.chat.completions.create(
                     model="openai/gpt-4o-mini",
                     messages=[
                         {
@@ -114,13 +114,13 @@ def make_node_vision_scanner(node_id, node_data):
 
 # Node Factory: Customizer
 def make_node_customizer(node_id, node_data, incoming_edges):
-    def node_customizer(state: AgentState):
+    async def node_customizer(state: AgentState):
         print(f"--- 🧠 Executing The Customizer Node ({node_id}) ---")
         current_text = get_combined_input(state, incoming_edges)
         system_prompt = node_data.get('prompt', 'You are a helpful AI.')
         
         try:
-            client = OpenAI(
+            client = AsyncOpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=os.environ.get("OPENROUTER_API_KEY", "")
             )
@@ -133,7 +133,7 @@ def make_node_customizer(node_id, node_data, incoming_edges):
             Example format: {{"output": "your final verdict here"}}
             """)
             
-            response = client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model="openai/gpt-4o-mini",
                 messages=[{"role": "user", "content": strict_prompt}],
                 max_tokens=1000
@@ -160,12 +160,12 @@ def make_node_customizer(node_id, node_data, incoming_edges):
 
 # Node Factory: Chart Generator
 def make_node_chart_generator(node_id, node_data, incoming_edges):
-    def node_chart_generator(state: AgentState):
+    async def node_chart_generator(state: AgentState):
         print(f"--- 📊 Executing Chart Generator ({node_id}) ---")
         current_text = get_combined_input(state, incoming_edges)
         
         try:
-            client = OpenAI(
+            client = AsyncOpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=os.environ.get("OPENROUTER_API_KEY", "")
             )
@@ -189,7 +189,7 @@ def make_node_chart_generator(node_id, node_data, incoming_edges):
             {current_text}
             """)
             
-            response = client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model="openai/gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1000
@@ -212,7 +212,7 @@ def make_node_chart_generator(node_id, node_data, incoming_edges):
 
 # Generic placeholder
 def make_generic_node(node_id, node_data, incoming_edges):
-    def generic_node(state: AgentState):
+    async def generic_node(state: AgentState):
         print(f"--- ⚙️ Executing Generic Node ({node_id}) ---")
         current_text = get_combined_input(state, incoming_edges)
         return {"outputs": {node_id: f"[Processed by {node_data.get('label', 'generic')}]\n{current_text}"}}
@@ -220,7 +220,7 @@ def make_generic_node(node_id, node_data, incoming_edges):
 
 # Node Factory: Merger
 def make_node_merger(node_id, node_data, incoming_edges):
-    def node_merger(state: AgentState):
+    async def node_merger(state: AgentState):
         print(f"--- 🔀 Executing Merger Node ({node_id}) ---")
         merged_text = get_combined_input(state, incoming_edges)
         return {"outputs": {node_id: f"--- MERGED DATA ---\n{merged_text}"}}
@@ -228,7 +228,7 @@ def make_node_merger(node_id, node_data, incoming_edges):
 
 # Node Factory: Screen Display
 def make_node_display(node_id, node_data, incoming_edges):
-    def node_display(state: AgentState):
+    async def node_display(state: AgentState):
         print(f"--- 💻 Executing Screen Display ({node_id}) ---")
         final_text = get_combined_input(state, incoming_edges)
         return {"outputs": {node_id: final_text}, "final_display": final_text}

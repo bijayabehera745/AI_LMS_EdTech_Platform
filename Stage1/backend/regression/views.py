@@ -27,6 +27,8 @@ from .serializers import (
 )
 from .dataset_generators import get_dataset
 from . import executor
+from .tasks import run_regression_experiment_task
+from celery.result import AsyncResult
 
 
 class RegressionPreviewView(APIView):
@@ -86,18 +88,39 @@ class RegressionRunView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            result = executor.run_experiment(
-                student       = request.user,
+            task = run_regression_experiment_task.delay(
+                user_id       = request.user.id,
                 scenario_id   = str(serializer.validated_data['scenario_id']),
                 variant_name  = serializer.validated_data['variant_name'],
                 student_prompt= serializer.validated_data.get('student_prompt', ''),
             )
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'task_id': task.id, 'status': 'processing'}, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
-            return Response({'error': f'Experiment failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': f'Experiment dispatch failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(result, status=status.HTTP_200_OK)
+class RegressionTaskStatusView(APIView):
+    """
+    GET /api/v1/regression/run-status/?task_id=<uuid>
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        task_id = request.query_params.get('task_id')
+        if not task_id:
+            return Response({'error': 'task_id required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        task = AsyncResult(task_id)
+        if task.state == 'PENDING' or task.state == 'STARTED':
+            return Response({'status': 'processing'})
+        elif task.state == 'SUCCESS':
+            result = task.result
+            if isinstance(result, dict) and 'error' in result:
+                return Response({'status': 'failed', 'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'completed', 'result': result})
+        elif task.state == 'FAILURE':
+            return Response({'status': 'failed', 'error': str(task.info)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({'status': task.state})
 
 
 class RegressionUploadRunView(APIView):
@@ -182,55 +205,30 @@ class RegressionPredictView(APIView):
         if not experiment.model_b64:
             return Response({'error': 'No trained model available for this experiment.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        import base64, json
-        from core.sandbox import run_in_sandbox
+        import base64
+        import io
+        import joblib
+        import pandas as pd
 
         model_bytes = base64.b64decode(experiment.model_b64)
-        input_json = json.dumps(features).encode('utf-8')
 
-        script_code = '''
-import joblib
-import pandas as pd
-import json
-
-try:
-    model = joblib.load('/app/data/model.pkl')
-    with open('/app/data/test_input.json') as f:
-        data = json.load(f)
-    
-    # If the model was trained with specific column names, we need a DataFrame
-    df = pd.DataFrame([data])
-    pred = model.predict(df)
-    
-    # Simple output logic depending on if prediction is scalar or array
-    result = pred.tolist()
-    if isinstance(result, list) and len(result) > 0:
-        result = result[0]
-        if isinstance(result, list): # handle [[val]] vs [val]
-            result = result[0]
+        try:
+            # Load directly from memory (bypasses Windows temp file I/O & Antivirus scans)
+            # We must use joblib.load since the model was saved with joblib.dump
+            model = joblib.load(io.BytesIO(model_bytes))
             
-    print(json.dumps({'prediction': result}))
-except Exception as e:
-    print(json.dumps({'error': str(e)}))
-'''
-        result = run_in_sandbox(
-            sandbox_image='regression-sandbox',
-            script_code=script_code,
-            input_files={
-                'model.pkl': model_bytes,
-                'test_input.json': input_json
-            },
-            timeout=10
-        )
+            # Convert single input dict into a pandas DataFrame (1 row)
+            df = pd.DataFrame([features])
+            pred = model.predict(df)
+            
+            # Extract scalar or array safely
+            result = pred.tolist()
+            if isinstance(result, list) and len(result) > 0:
+                result = result[0]
+                if isinstance(result, list): # handle [[val]] vs [val]
+                    result = result[0]
 
-        if result['success']:
-            try:
-                # The script prints JSON to stdout
-                out_data = json.loads(result['stdout'])
-                if 'error' in out_data:
-                    return Response({'error': out_data['error']}, status=status.HTTP_400_BAD_REQUEST)
-                return Response(out_data, status=status.HTTP_200_OK)
-            except json.JSONDecodeError:
-                return Response({'error': 'Failed to parse model output.', 'raw': result['stdout']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response({'error': 'Prediction failed.', 'details': result['stderr']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'prediction': result}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'Prediction failed natively.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

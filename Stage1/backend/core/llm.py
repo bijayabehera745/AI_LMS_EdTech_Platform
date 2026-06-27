@@ -11,7 +11,9 @@ Two functions:
 
 import logging
 import openai
+import hashlib
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +101,18 @@ def generate_code(
     if student_prompt:
         user_message += f"Student's additional instruction: {student_prompt}\n"
 
+    # Create a unique hash based on all inputs
+    cache_string = f"code_{model_type}_{scenario_title}_{variant_label}_{student_prompt}_{data_columns}"
+    cache_key = hashlib.md5(cache_string.encode('utf-8')).hexdigest()
+    
+    # Check cache first
+    cached_code = cache.get(cache_key)
+    if cached_code:
+        logger.info(f"⚡ CACHE HIT: Returning cached code for '{scenario_title}' ({variant_label})")
+        return cached_code
+
     try:
+        logger.info(f"⏳ CACHE MISS: Generating code via LLM for '{scenario_title}'...")
         client = _get_client()
         response = client.chat.completions.create(
             model='openai/gpt-4o-mini',
@@ -117,7 +130,10 @@ def generate_code(
         if code.endswith('```'):
             code = code[:-3]
 
-        return code.strip()
+        code = code.strip()
+        # Save to cache for 30 days
+        cache.set(cache_key, code, timeout=60*60*24*30)
+        return code
     except Exception as e:
         logger.exception(f'[llm] generate_code failed: {e}')
         raise
@@ -140,7 +156,18 @@ def generate_explanation(
         "Explain what these results mean, strictly returning JSON."
     )
 
+    # Create a unique hash for the explanation based on inputs + stdout
+    cache_string = f"expl_{model_type}_{scenario_title}_{variant_label}_{stdout[:1000]}"
+    cache_key = hashlib.md5(cache_string.encode('utf-8')).hexdigest()
+    
+    # Check cache first
+    cached_explanation = cache.get(cache_key)
+    if cached_explanation:
+        logger.info(f"⚡ CACHE HIT: Returning cached explanation for '{scenario_title}'")
+        return cached_explanation
+
     try:
+        logger.info(f"⏳ CACHE MISS: Generating explanation via LLM for '{scenario_title}'...")
         client = _get_client()
         response = client.chat.completions.create(
             model='openai/gpt-4o-mini',
@@ -150,7 +177,10 @@ def generate_explanation(
                 {"role": "user", "content": user_message}
             ]
         )
-        return response.choices[0].message.content.strip()
+        explanation = response.choices[0].message.content.strip()
+        # Save to cache for 30 days
+        cache.set(cache_key, explanation, timeout=60*60*24*30)
+        return explanation
     except Exception as e:
         logger.exception(f'[llm] generate_explanation failed: {e}')
         return '{"chefs_choice": "Error generating explanation", "healthy_snacks": "", "guessing_game": "", "tricky_test": "", "fix_it_mode": ""}'

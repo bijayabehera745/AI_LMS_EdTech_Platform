@@ -5,7 +5,7 @@ from .models import AgenticWorkflow
 from .compiler import ReactFlowCompiler
 
 @shared_task
-def execute_langgraph_pipeline(workflow_id, initial_input="Explain how black holes work"):
+def execute_langgraph_pipeline(workflow_id, initial_input="Please provide an input."):
     print(f"🚀 Starting background execution for Workflow ID: {workflow_id}")
     
     # Get the WebSocket channel layer
@@ -27,8 +27,9 @@ def execute_langgraph_pipeline(workflow_id, initial_input="Explain how black hol
         compiler = ReactFlowCompiler(workflow.flow_data)
         app = compiler.compile()
         
-        # 3. Execute it!
-        result = app.invoke({"outputs": {"__initial__": initial_input}, "final_display": ""})
+        # 3. Execute it asynchronously to allow parallel node execution!
+        import asyncio
+        result = asyncio.run(app.ainvoke({"outputs": {"__initial__": initial_input}, "final_display": ""}))
         outputs_dict = result.get('outputs', {})
         final_output = result.get('final_display', str(outputs_dict))
         

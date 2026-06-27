@@ -61,11 +61,29 @@ const LabWorkspace = ({ onBackToDashboard }) => {
     setExperimentResult(null);
     setExperimentError(null);
     try {
-      const response = await api.post(`/${selectedScenario.model_type.toLowerCase()}/run/`, {
+      let response = await api.post(`/${selectedScenario.model_type.toLowerCase()}/run/`, {
         scenario_id: selectedScenario.id,
         variant_name: selectedVariant,
         student_prompt: ''
       });
+
+      if (response.data.task_id) {
+        while (true) {
+          const statusRes = await api.get(`/${selectedScenario.model_type.toLowerCase()}/run-status/`, {
+            params: { task_id: response.data.task_id }
+          });
+          
+          if (statusRes.data.status === 'completed') {
+            response = { data: statusRes.data.result };
+            break;
+          } else if (statusRes.data.status === 'failed') {
+            throw new Error(statusRes.data.error || 'Experiment failed during background processing.');
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+      }
+
       setExperimentResult(response.data);
       setShowResults(true);
     } catch (err) {
