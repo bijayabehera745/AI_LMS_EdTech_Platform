@@ -13,6 +13,7 @@ const AIFoundationsDashboard = ({
   onNavigateToMaths,
   onNavigateToDataAnalysis,
   onNavigateToSupervised,
+  onNavigateToClassification,
   onNavigateToUnsupervised,
   onNavigateToRL,
   onNavigateToNeuralNetworks
@@ -77,6 +78,18 @@ const AIFoundationsDashboard = ({
       onClick: onNavigateToSupervised,
       subtopics: ['Line Fitter (Regression)', 'Classification Boundary', 'Decision Trees'],
       chapters: 7
+    },
+    {
+      id: 'classification',
+      lessonNum: 'Topic 05b',
+      title: 'Classification',
+      description: 'Sort the world into categories — draw the decision boundary that separates Dry Waste from Wet Waste, even when data is noisy.',
+      icon: TrendingUp,
+      color: 'var(--accent-green)',
+      active: true,
+      onClick: onNavigateToClassification,
+      subtopics: ['Decision Boundary', 'Waste Sorting Game', 'Noisy Data'],
+      chapters: 2
     },
     {
       id: 'unsupervised',

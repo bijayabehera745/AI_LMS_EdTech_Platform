@@ -11,6 +11,7 @@ import EmergenceOfIntelligence from './pages/AIFoundations/EmergenceOfIntelligen
 import SmartPuppy from './pages/AIFoundations/SmartPuppy';
 import MathsForAI from './pages/AIFoundations/MathsForAI';
 import DataAnalysis from './pages/AIFoundations/DataAnalysis';
+import Classification from './pages/AIFoundations/Classification';
 import './index.css';
 
 const AppContent = () => {
@@ -64,6 +65,7 @@ const AppContent = () => {
              onNavigateToMaths={() => setCurrentView('maths_lesson')}
              onNavigateToDataAnalysis={() => setCurrentView('data_analysis')}
              onNavigateToSupervised={() => setCurrentView('supervised_lesson')}
+             onNavigateToClassification={() => setCurrentView('classification_lesson')}
              onNavigateToUnsupervised={() => setCurrentView('unsupervised_lesson')}
              onNavigateToRL={() => setCurrentView('rl_lesson')}
              onNavigateToNeuralNetworks={() => setCurrentView('neural_networks_lesson')}
@@ -84,6 +86,10 @@ const AppContent = () => {
 
   if (currentView === 'data_analysis') {
     return <DataAnalysis onBackToDashboard={() => setCurrentView('foundations')} />;
+  }
+
+  if (currentView === 'classification_lesson') {
+    return <Classification onBackToDashboard={() => setCurrentView('foundations')} />;
   }
 };
 
