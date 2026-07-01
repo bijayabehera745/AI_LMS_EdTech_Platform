@@ -70,12 +70,12 @@ const AIFoundationsDashboard = ({
       id: 'supervised',
       lessonNum: 'Topic 05',
       title: 'Supervised Learning',
-      description: 'Teach a machine to predict outcomes by showing it labelled examples — regression, classification, and decision trees.',
+      description: 'Teach a machine to predict outcomes by showing it labelled examples — regression, clustering, and decision trees.',
       icon: TrendingUp,
       color: 'var(--accent-cyan)',
-      active: false,
+      active: true,
       onClick: onNavigateToSupervised,
-      subtopics: ['Line Fitter (Regression)', 'Classification Boundary', 'Decision Trees'],
+      subtopics: ['Line Fitter (Regression)', 'Clustering Boundary', 'Decision Trees'],
       chapters: 7
     },
     {

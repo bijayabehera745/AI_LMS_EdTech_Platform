@@ -11,11 +11,14 @@ import EmergenceOfIntelligence from './pages/AIFoundations/EmergenceOfIntelligen
 import SmartPuppy from './pages/AIFoundations/SmartPuppy';
 import MathsForAI from './pages/AIFoundations/MathsForAI';
 import DataAnalysis from './pages/AIFoundations/DataAnalysis';
+import SupervisedLearning from './pages/AIFoundations/SupervisedLearning';
+import LinearRegressionLesson from './pages/AIFoundations/LinearRegressionLesson';
 import './index.css';
 
 const AppContent = () => {
   const { user, loading } = useContext(AuthContext);
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'lab'
+  const [initialLabCategory, setInitialLabCategory] = useState(null);
 
   if (loading) {
     return (
@@ -45,11 +48,17 @@ const AppContent = () => {
   }
 
   if (currentView === 'lab') {
-    return <LabWorkspace onBackToDashboard={() => setCurrentView('dashboard')} />;
+    return <LabWorkspace 
+             initialCategory={initialLabCategory}
+             onBackToDashboard={() => setCurrentView('dashboard')} 
+           />;
   }
 
   if (currentView === 'data_lab') {
-    return <DataLabWorkspace onBackToDashboard={() => setCurrentView('dashboard')} />;
+    return <DataLabWorkspace 
+             initialCategory={initialLabCategory}
+             onBackToDashboard={() => setCurrentView('dashboard')} 
+           />;
   }
 
   if (currentView === 'agentic') {
@@ -84,6 +93,25 @@ const AppContent = () => {
 
   if (currentView === 'data_analysis') {
     return <DataAnalysis onBackToDashboard={() => setCurrentView('foundations')} />;
+  }
+
+  if (currentView === 'supervised_lesson') {
+    return <SupervisedLearning 
+             onBackToDashboard={() => setCurrentView('foundations')} 
+             onNavigateToLinearRegression={() => setCurrentView('linear_regression_lesson')}
+           />;
+  }
+
+  if (currentView === 'linear_regression_lesson') {
+    return (
+      <LinearRegressionLesson 
+        onBackToSupervised={() => setCurrentView('supervised_lesson')} 
+        onNavigateToPredictionEngine={(category) => {
+          setInitialLabCategory(category);
+          setCurrentView('lab');
+        }}
+      />
+    );
   }
 };
 
