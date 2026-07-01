@@ -8,6 +8,9 @@ import DataLabWorkspace from './pages/DataLabWorkspace';
 import AgenticLanding from './pages/AgenticSandbox/AgenticLanding';
 import AIFoundationsDashboard from './pages/AIFoundations/AIFoundationsDashboard';
 import EmergenceOfIntelligence from './pages/AIFoundations/EmergenceOfIntelligence';
+import SmartPuppy from './pages/AIFoundations/SmartPuppy';
+import MathsForAI from './pages/AIFoundations/MathsForAI';
+import DataAnalysis from './pages/AIFoundations/DataAnalysis';
 import './index.css';
 
 const AppContent = () => {
@@ -57,11 +60,30 @@ const AppContent = () => {
     return <AIFoundationsDashboard 
              onBackToDashboard={() => setCurrentView('dashboard')} 
              onNavigateToLesson1={() => setCurrentView('emergence_lesson')}
+             onNavigateToSmartPuppy={() => setCurrentView('smart_puppy')}
+             onNavigateToMaths={() => setCurrentView('maths_lesson')}
+             onNavigateToDataAnalysis={() => setCurrentView('data_analysis')}
+             onNavigateToSupervised={() => setCurrentView('supervised_lesson')}
+             onNavigateToUnsupervised={() => setCurrentView('unsupervised_lesson')}
+             onNavigateToRL={() => setCurrentView('rl_lesson')}
+             onNavigateToNeuralNetworks={() => setCurrentView('neural_networks_lesson')}
            />;
   }
 
   if (currentView === 'emergence_lesson') {
     return <EmergenceOfIntelligence onBackToDashboard={() => setCurrentView('foundations')} />;
+  }
+
+  if (currentView === 'smart_puppy') {
+    return <SmartPuppy onBackToDashboard={() => setCurrentView('foundations')} />;
+  }
+
+  if (currentView === 'maths_lesson') {
+    return <MathsForAI onBackToDashboard={() => setCurrentView('foundations')} />;
+  }
+
+  if (currentView === 'data_analysis') {
+    return <DataAnalysis onBackToDashboard={() => setCurrentView('foundations')} />;
   }
 };
 

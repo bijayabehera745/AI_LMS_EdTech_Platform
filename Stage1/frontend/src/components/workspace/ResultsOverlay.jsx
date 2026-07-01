@@ -77,6 +77,16 @@ const ResultsOverlay = ({ result, onClose }) => {
             </div>
           ) : null}
 
+          {result.success && result.output_image && (
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <img 
+                src={`data:image/jpeg;base64,${result.output_image}`} 
+                alt="Model Output Plot" 
+                style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+              />
+            </div>
+          )}
+
           {result.success && explanationData.fallback ? (
             <div style={{ background: 'rgba(0, 240, 255, 0.05)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(0, 240, 255, 0.2)' }}>
               {explanationData.fallback}
