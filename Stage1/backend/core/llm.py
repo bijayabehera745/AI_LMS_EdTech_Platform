@@ -29,6 +29,7 @@ _SYSTEM_CONTEXT = {
         "- Save a matplotlib plot to /app/data/output.jpg\n"
         "- Print key metrics (R² score, predictions) to stdout\n"
         "Use clear variable names suitable for a 12-14 year old reading the code. "
+        "CRITICAL: Use plt.style.use('dark_background'). Plot scatter points in bright neon cyan ('#00f0ff') and the regression line in bright neon pink ('#ff00ff') with linewidth=3. If there are 2 features (3 columns total), you MUST use `fig.add_subplot(111, projection='3d')` to generate a 3D scatter plot and a 3D regression plane (using np.meshgrid) instead of a line. Make the graph look highly futuristic, sleek, and interesting! "
         "Do not use plt.show(). Save the figure with plt.savefig('/app/data/output.jpg', bbox_inches='tight', dpi=100)."
     ),
     'CLASSIFICATION': (
@@ -41,6 +42,7 @@ _SYSTEM_CONTEXT = {
         "- Save a confusion matrix plot to /app/data/output.jpg using matplotlib\n"
         "- Print accuracy, a classification report to stdout\n"
         "Use clear variable names suitable for a 12-14 year old. "
+        "CRITICAL: Use plt.style.use('dark_background'). Plot points in bright neon colors. Make the graph look highly futuristic, sleek, and interesting! "
         "Do not use plt.show(). Save with plt.savefig('/app/data/output.jpg', bbox_inches='tight', dpi=100)."
     ),
     'NEURAL_NETWORK': (
@@ -53,6 +55,7 @@ _SYSTEM_CONTEXT = {
         "- Save a training loss curve plot to /app/data/output.jpg using matplotlib\n"
         "- Print accuracy and a short classification report to stdout\n"
         "Use clear variable names suitable for a 12-14 year old. "
+        "CRITICAL: Use plt.style.use('dark_background'). Plot lines in bright neon colors (e.g. cyan/magenta). Make the graph look highly futuristic, sleek, and interesting! "
         "Do not use plt.show(). Save with plt.savefig('/app/data/output.jpg', bbox_inches='tight', dpi=100)."
     ),
 }
@@ -102,7 +105,7 @@ def generate_code(
         user_message += f"Student's additional instruction: {student_prompt}\n"
 
     # Create a unique hash based on all inputs
-    cache_string = f"code_{model_type}_{scenario_title}_{variant_label}_{student_prompt}_{data_columns}"
+    cache_string = f"code_v3_{model_type}_{scenario_title}_{variant_label}_{student_prompt}_{data_columns}"
     cache_key = hashlib.md5(cache_string.encode('utf-8')).hexdigest()
     
     # Check cache first

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UploadCloud, CheckCircle, AlertTriangle, FileText, FileImage, Type, ArrowRight, ArrowLeft, Target, Wrench, Search } from 'lucide-react';
 import api from '../../api';
+import SocialMediaDataLab from './SocialMediaDataLab';
 
 const LESSONS = {
   REGRESSION: {
@@ -50,11 +51,68 @@ const DataLabCanvas = ({ scenario }) => {
   const [error, setError] = useState(null);
   const [uploadedVariant, setUploadedVariant] = useState(null);
 
+  if (scenario.title === 'The Social Media Trend') {
+    return <SocialMediaDataLab scenario={scenario} onBackToDashboard={() => {}} />;
+  }
+
   const lesson = LESSONS[scenario.model_type] || LESSONS.REGRESSION;
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      
+      // 1. Size check (Max 5MB)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        setError("File is too large! Maximum allowed size is 5MB.");
+        return;
+      }
+
+      // 2. Neural Network format check
+      if (scenario.model_type === 'NEURAL_NETWORK') {
+        if (!selectedFile.type.startsWith('image/')) {
+          setError("Neural Networks for this scenario expect Image files (PNG/JPG).");
+          return;
+        }
+      } else {
+        // 3. Regression / Classification check
+        if (selectedFile.name.endsWith('.csv') || selectedFile.type === 'text/csv') {
+          // Pre-check the CSV format and data types
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const text = event.target.result;
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            if (lines.length < 5) {
+              setError("CSV needs more data! Please provide at least 4 rows of data (plus 1 header row).");
+              return;
+            }
+            
+            const headers = lines[0].split(',');
+            if (headers.length < 2) {
+              setError("CSV Format Error: Your data must have at least 2 columns (Features and a Target).");
+              return;
+            }
+
+            const firstRow = lines[1].split(',');
+            if (firstRow.length !== headers.length) {
+              setError(`CSV Format Error: Data row 1 has ${firstRow.length} columns, but header has ${headers.length}.`);
+              return;
+            }
+
+            // All good for CSV
+            setFile(selectedFile);
+            setError(null);
+            setUploadSuccess(false);
+          };
+          reader.readAsText(selectedFile);
+          return; // Exit here, state will be updated in reader.onload
+        } else if (!selectedFile.type.startsWith('image/') && !selectedFile.name.match(/\.(pdf|txt|md|docx)$/i)) {
+           setError("Unsupported file format. Please upload a CSV, Image, PDF, or Text document.");
+           return;
+        }
+      }
+
+      setFile(selectedFile);
       setError(null);
       setUploadSuccess(false);
     }

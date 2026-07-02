@@ -15,6 +15,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from core.llm import extract_csv_from_unstructured_data
 from .models import Scenario, DataVariant
 from .serializers import ScenarioListSerializer, ScenarioDetailSerializer
+import csv
+import io
 
 
 class ScenarioListView(generics.ListAPIView):
@@ -94,3 +96,75 @@ class CustomDataUploadView(APIView):
             'variant_name': variant.name,
             'payload': payload[:500] + '...' if len(payload) > 500 else payload
         }, status=status.HTTP_200_OK)
+
+
+class CustomJsonUploadView(APIView):
+    """
+    POST /api/v1/scenarios/upload-json/
+    Handles JSON array upload and saves it as a CSV DataVariant.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        scenario_id = request.data.get('scenario_id')
+        data_rows = request.data.get('data') # Expecting list of dicts [{x:1, y:2}]
+        import time
+        name = request.data.get('name', f'custom_json_{request.user.id}_{int(time.time())}')
+        label = request.data.get('label', 'My Manual Data')
+
+        if not data_rows or not scenario_id:
+            return Response({'error': 'data and scenario_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            scenario = Scenario.objects.get(id=scenario_id)
+        except Scenario.DoesNotExist:
+            return Response({'error': 'Scenario not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Convert JSON array to CSV payload
+            output = io.StringIO()
+            if len(data_rows) > 0:
+                keys = data_rows[0].keys()
+                writer = csv.DictWriter(output, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(data_rows)
+            payload = output.getvalue()
+        except Exception as e:
+            return Response({'error': f'Failed to process JSON data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        variant, created = DataVariant.objects.update_or_create(
+            scenario=scenario,
+            name=name,
+            user=request.user,
+            defaults={
+                'label': label,
+                'description': 'Manual data collected in the Data Lab.',
+                'data_payload': payload,
+                'order': 99
+            }
+        )
+
+        return Response({
+            'message': 'Manual data saved successfully',
+            'variant_name': variant.name,
+            'payload': payload
+        }, status=status.HTTP_200_OK)
+
+
+class CustomVariantDeleteView(APIView):
+    """
+    DELETE /api/v1/scenarios/variant/<id>/
+    Deletes a custom variant created by a student.
+    """
+    permission_classes = [AllowAny]
+    
+    def delete(self, request, pk):
+        try:
+            variant = DataVariant.objects.get(id=pk)
+            if variant.user is None:
+                return Response({'error': 'Cannot delete system variants.'}, status=status.HTTP_403_FORBIDDEN)
+                
+            variant.delete()
+            return Response({'status': 'deleted'}, status=status.HTTP_204_NO_CONTENT)
+        except DataVariant.DoesNotExist:
+            return Response({'error': 'Variant not found.'}, status=status.HTTP_404_NOT_FOUND)

@@ -162,7 +162,7 @@ const Login = () => {
                 theme="filled_black"
                 shape="pill"
                 text="signin_with"
-                width="100%"
+                width="320"
               />
             </div>
             <button 

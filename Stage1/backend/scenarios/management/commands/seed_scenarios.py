@@ -26,7 +26,7 @@ SCENARIOS_DATA = [
         'takeaway':   'Linear regression is great at finding trends, but extreme outliers or a lack of history can completely throw off its predictions.',
         'try_it_out': 'Measure your own potted plant\'s sunlight and water for a week, and see if the AI can guess how tall it will get on day eight.',
         'variants': [
-            {'name': 'perfect', 'label': 'Perfect Data',   'order': 1, 'description': 'Clean, daily logs showing steady, predictable growth.'},
+            {'name': 'perfect', 'label': 'Perfect Data',   'order': 1, 'description': 'A perfectly balanced data with optimal sunlight and water given for plant growth.'},
             {'name': 'tiny',    'label': 'Tiny Dataset',   'order': 2, 'description': 'Only five days of logs, leaving the AI with too little history to learn from.'},
             {'name': 'messy',   'label': 'Messy Sensors',  'order': 3, 'description': 'Broken sensors that record impossible things, like 10,000 hours of sunlight in a single day.'},
         ],
@@ -113,6 +113,21 @@ SCENARIOS_DATA = [
             {'name': 'perfect', 'label': 'Dry Pavement',  'order': 1, 'description': 'A clean, safe, and predictable stopping curve.'},
             {'name': 'icy',     'label': 'The Icy Road',  'order': 2, 'description': 'Slippery conditions that make the stopping distances wildly longer.'},
             {'name': 'slow',    'label': 'The Snail Pace','order': 3, 'description': 'Data only collected from bikes moving at a slow walking speed.'},
+        ],
+    },
+
+    {
+        'title':      'The Social Media Trend',
+        'model_type': 'REGRESSION',
+        'icon':       '❤️',
+        'order':      8,
+        'challenge':  'Predict the number of comments on a post based on its number of likes.',
+        'takeaway':   'Generally, the more likes a post gets, the more comments it tends to have. But sometimes an algorithmic anomaly or a disabled comment section can break this rule.',
+        'try_it_out': 'Open Instagram, YouTube, or any social media app, pick 10 random posts, and log the likes (X) vs comments (Y).',
+        'variants': [
+            {'name': 'perfect', 'label': 'Viral Content',    'order': 1, 'description': 'Posts where high likes consistently correspond to high comments.'},
+            {'name': 'disabled','label': 'Disabled Comments', 'order': 2, 'description': 'A post with 1,000,000 likes but 0 comments because the creator turned them off.'},
+            {'name': 'bot',     'label': 'The Bot Attack',    'order': 3, 'description': 'A post with very few likes but massive amounts of bot spam comments.'},
         ],
     },
 
@@ -268,10 +283,10 @@ class Command(BaseCommand):
 
             if created:
                 created_count += 1
-                self.stdout.write(f'  ✅ Created: {scenario.title}')
+                self.stdout.write(f'  Created: {scenario.title}')
             else:
                 updated_count += 1
-                self.stdout.write(f'  🔄 Updated: {scenario.title}')
+                self.stdout.write(f'  Updated: {scenario.title}')
 
             for v in variants_data:
                 _, v_created = DataVariant.objects.update_or_create(
@@ -282,6 +297,6 @@ class Command(BaseCommand):
                 variant_count += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'\n✅ Done! {created_count} created, {updated_count} updated. '
+            f'\nDone! {created_count} created, {updated_count} updated. '
             f'{variant_count} variants processed.'
         ))

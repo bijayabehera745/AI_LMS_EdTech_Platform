@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { BookOpen, BarChart2, BrainCircuit, ShieldAlert, LogOut, Network } from 'lucide-react';
 
-const StudentDashboard = ({ onNavigateToLab, onNavigateToDataLab, onNavigateToAgentic, onNavigateToFoundations }) => {
+const StudentDashboard = ({ onNavigateToLab, onNavigateToDataLab, onNavigateToAgentic, onNavigateToFoundations, onNavigateToEthics }) => {
   const { user, logout } = useContext(AuthContext);
 
   const modules = [
@@ -43,7 +43,8 @@ const StudentDashboard = ({ onNavigateToLab, onNavigateToDataLab, onNavigateToAg
       description: 'Bias, fairness, accountability, privacy, and digital citizenship.',
       icon: ShieldAlert,
       color: 'var(--accent-red)',
-      active: false
+      active: true,
+      onClick: onNavigateToEthics
     },
     {
       id: 'agentic_sandbox',

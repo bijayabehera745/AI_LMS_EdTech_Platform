@@ -3,9 +3,14 @@ from .models import Scenario, DataVariant
 
 
 class DataVariantSerializer(serializers.ModelSerializer):
+    is_custom = serializers.SerializerMethodField()
+
     class Meta:
         model  = DataVariant
-        fields = ['id', 'name', 'label', 'description', 'order']
+        fields = ['id', 'name', 'label', 'description', 'order', 'is_custom']
+
+    def get_is_custom(self, obj):
+        return obj.user is not None
 
 
 class ScenarioListSerializer(serializers.ModelSerializer):

@@ -63,7 +63,8 @@ class RegressionPreviewView(APIView):
         except KeyError as e:
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
 
-        preview_df = df.head(10)
+        # Replace NaNs and Infinities with None for JSON compliance
+        preview_df = df.head(10).replace([float('inf'), float('-inf')], float('nan')).where(pd.notnull(df.head(10)), None)
 
         return Response({
             'scenario_title': scenario.title,

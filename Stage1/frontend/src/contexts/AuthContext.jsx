@@ -13,9 +13,31 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       fetchUserProfile();
     } else {
-      setLoading(false);
+      autoGuestLogin();
     }
   }, []);
+
+  const autoGuestLogin = async () => {
+    try {
+      // Try to login directly first
+      await login('guest@example.com', 'guestpassword');
+    } catch (e) {
+      // If login fails, user probably doesn't exist, so register then login
+      try {
+        await api.post('/auth/register/', { 
+          name: 'Guest Student', 
+          email: 'guest@example.com', 
+          password: 'guestpassword', 
+          password2: 'guestpassword', 
+          grade: '8' 
+        });
+        await login('guest@example.com', 'guestpassword');
+      } catch (e2) {
+        console.error("Auto guest login failed", e2);
+        setLoading(false);
+      }
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {

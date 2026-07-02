@@ -26,17 +26,25 @@ const LabWorkspace = ({ onBackToDashboard, initialCategory }) => {
     }
   }, [selectedScenario, initialCategory, scenarios]);
 
-  // Fetch all scenarios
-  useEffect(() => {
-    const fetchScenarios = async () => {
-      try {
-        const response = await api.get('/scenarios/');
-        // We fetch ALL scenarios, not filtered by activeModule
-        setScenarios(response.data);
-      } catch (err) {
-        console.error("Failed to fetch scenarios", err);
+  const fetchScenarios = async () => {
+    try {
+      const response = await api.get('/scenarios/');
+      // We fetch ALL scenarios, not filtered by activeModule
+      setScenarios(response.data);
+      if (selectedScenario) {
+        const updated = response.data.find(s => s.id === selectedScenario.id);
+        // Only update if it actually changed to prevent infinite loops if called from elsewhere
+        if (updated && JSON.stringify(updated) !== JSON.stringify(selectedScenario)) {
+          setSelectedScenario(updated);
+        }
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch scenarios", err);
+    }
+  };
+
+  // Fetch all scenarios on mount
+  useEffect(() => {
     fetchScenarios();
   }, []);
 
@@ -104,20 +112,25 @@ const LabWorkspace = ({ onBackToDashboard, initialCategory }) => {
   };
 
   if (!selectedScenario) {
-    const uniqueCategories = [...new Set(scenarios.map(s => s.model_type))];
+    const allCategories = [...new Set(scenarios.map(s => s.model_type))];
+    const preferredOrder = ['REGRESSION', 'CLASSIFICATION', 'NEURAL_NETWORK'];
+    const uniqueCategories = allCategories.sort((a, b) => {
+      const indexA = preferredOrder.indexOf(a);
+      const indexB = preferredOrder.indexOf(b);
+      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+    });
 
     return (
-      <div style={{ padding: '0', height: '100vh', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        {/* STICKY TOP NAV */}
+        {/* FIXED TOP NAV */}
         <div style={{
-          position: 'sticky',
-          top: 0,
           background: 'rgba(10, 15, 30, 0.95)',
           backdropFilter: 'blur(10px)',
           padding: '20px 40px',
           borderBottom: '1px solid var(--glass-border)',
           zIndex: 10,
+          flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: '20px'
@@ -154,7 +167,7 @@ const LabWorkspace = ({ onBackToDashboard, initialCategory }) => {
         </div>
 
         {/* SCROLLABLE MAIN CONTENT */}
-        <div style={{ padding: '40px' }}>
+        <div style={{ padding: '40px', flex: 1, overflowY: 'auto' }}>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', fontSize: '1.1rem' }}>
             Select an experiment below to start training AI models!
           </p>
@@ -241,6 +254,7 @@ const LabWorkspace = ({ onBackToDashboard, initialCategory }) => {
           isTraining={isTraining}
           experimentResult={experimentResult}
           experimentError={experimentError}
+          onRefreshScenarios={fetchScenarios}
         />
 
         {/* OVERLAY: Results frosted glass card */}

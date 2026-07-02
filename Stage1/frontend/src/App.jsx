@@ -13,6 +13,13 @@ import MathsForAI from './pages/AIFoundations/MathsForAI';
 import DataAnalysis from './pages/AIFoundations/DataAnalysis';
 import SupervisedLearning from './pages/AIFoundations/SupervisedLearning';
 import LinearRegressionLesson from './pages/AIFoundations/LinearRegressionLesson';
+import AIEthicsHub from './pages/AIEthicsArena/AIEthicsHub';
+import Level1EmotionDetector from './pages/AIEthicsArena/Level1EmotionDetector';
+import Level2ScholarshipAI from './pages/AIEthicsArena/Level2ScholarshipAI';
+import Level3HallucinationHunter from './pages/AIEthicsArena/Level3HallucinationHunter';
+import Level4DeepfakeDetective from './pages/AIEthicsArena/Level4DeepfakeDetective';
+import Level5PrivacyEscapeRoom from './pages/AIEthicsArena/Level5PrivacyEscapeRoom';
+import Level6VoiceClone from './pages/AIEthicsArena/Level6VoiceClone';
 import './index.css';
 
 const AppContent = () => {
@@ -44,6 +51,7 @@ const AppContent = () => {
              onNavigateToDataLab={() => setCurrentView('data_lab')}
              onNavigateToAgentic={() => setCurrentView('agentic')} 
              onNavigateToFoundations={() => setCurrentView('foundations')}
+             onNavigateToEthics={() => setCurrentView('ethics_hub')}
            />;
   }
 
@@ -112,6 +120,43 @@ const AppContent = () => {
         }}
       />
     );
+  }
+
+  // ── AI Ethics Arena Routes ──
+  if (currentView === 'ethics_hub') {
+    return <AIEthicsHub
+             onBackToDashboard={() => setCurrentView('dashboard')}
+             onNavigateToLevel1={() => setCurrentView('ethics_level_1')}
+             onNavigateToLevel2={() => setCurrentView('ethics_level_2')}
+             onNavigateToLevel3={() => setCurrentView('ethics_level_3')}
+             onNavigateToLevel4={() => setCurrentView('ethics_level_4')}
+             onNavigateToLevel5={() => setCurrentView('ethics_level_5')}
+             onNavigateToLevel6={() => setCurrentView('ethics_level_6')}
+           />;
+  }
+
+  if (currentView === 'ethics_level_1') {
+    return <Level1EmotionDetector onBackToHub={() => setCurrentView('ethics_hub')} />;
+  }
+
+  if (currentView === 'ethics_level_2') {
+    return <Level2ScholarshipAI onBackToHub={() => setCurrentView('ethics_hub')} />;
+  }
+
+  if (currentView === 'ethics_level_3') {
+    return <Level3HallucinationHunter onBackToHub={() => setCurrentView('ethics_hub')} />;
+  }
+
+  if (currentView === 'ethics_level_4') {
+    return <Level4DeepfakeDetective onBackToHub={() => setCurrentView('ethics_hub')} />;
+  }
+
+  if (currentView === 'ethics_level_5') {
+    return <Level5PrivacyEscapeRoom onBackToHub={() => setCurrentView('ethics_hub')} />;
+  }
+
+  if (currentView === 'ethics_level_6') {
+    return <Level6VoiceClone onBackToHub={() => setCurrentView('ethics_hub')} />;
   }
 };
 

@@ -29,20 +29,25 @@ const DataLabWorkspace = ({ onBackToDashboard, initialCategory }) => {
   }, []);
 
   if (!selectedScenario) {
-    const uniqueCategories = [...new Set(scenarios.map(s => s.model_type))];
+    const allCategories = [...new Set(scenarios.map(s => s.model_type))];
+    const preferredOrder = ['REGRESSION', 'CLASSIFICATION', 'NEURAL_NETWORK'];
+    const uniqueCategories = allCategories.sort((a, b) => {
+      const indexA = preferredOrder.indexOf(a);
+      const indexB = preferredOrder.indexOf(b);
+      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+    });
 
     return (
-      <div style={{ padding: '0', height: '100vh', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        {/* STICKY TOP NAV */}
+        {/* FIXED TOP NAV */}
         <div style={{
-          position: 'sticky',
-          top: 0,
           background: 'rgba(10, 15, 30, 0.95)',
           backdropFilter: 'blur(10px)',
           padding: '20px 40px',
           borderBottom: '1px solid var(--glass-border)',
           zIndex: 10,
+          flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: '20px'
@@ -79,7 +84,7 @@ const DataLabWorkspace = ({ onBackToDashboard, initialCategory }) => {
         </div>
 
         {/* SCROLLABLE MAIN CONTENT */}
-        <div style={{ padding: '40px' }}>
+        <div style={{ padding: '40px', flex: 1, overflowY: 'auto' }}>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', fontSize: '1.1rem' }}>
             Welcome to the Data Lab! Here you can create and collect custom data to feed into the Prediction Engine.
           </p>

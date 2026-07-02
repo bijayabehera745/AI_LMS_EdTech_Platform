@@ -1,12 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Database, Zap, AlertTriangle, Package, Bot, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Database, Zap, AlertTriangle, Package, Bot, ArrowRight, ArrowLeft, BarChart2, Hash, Maximize2, Minimize2, Activity, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Plot from 'react-plotly.js';
 import api from '../../api';
 import trainingVideo from '../../assets/training_video.mp4';
 
-const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, loading, onRunModel, isTraining, experimentResult, experimentError }) => {
+const PREDICTION_PROMPTS = {
+  'The Social Media Trend': "Give me the number of likes, I'll try to guess the comments!",
+  'The Smart Greenhouse': "Set the sunlight and water, I'll predict the growth!",
+  'The Paper Plane Lab': "Give me the wing size and weight, I'll predict the flight distance!",
+  'The Bean Sprout Project': "Give me the light and water, I'll predict the sprout height!",
+  'The Study Score Predictor': "Tell me the study hours, I'll guess the score!",
+  'The Lemonade Stand': "Give me the temperature, I'll predict the sales!",
+  'The Speedrun Timer': "Give me the player stats, I'll predict the time!",
+  'The Bike Brake Test': "Give me the speed and weight, I'll predict the stopping distance!",
+  'The Chat Moderator': "Enter the chat details, I'll predict if it's toxic!",
+  'The Spam Catcher': "Give me the clues, I'll catch the spam!",
+  'The Smart Trash Can': "Give me the weight and material, I'll sort the trash!",
+  'The Gaming Bot Detector': "Give me the actions, I'll tell you if it's a bot!",
+  'The Forest Forager': "Give me the mushroom details, I'll tell you if it's poisonous!",
+  'The Dog Translator': "Give me the barks and wags, I'll tell you what they want!",
+  'The Magic Potion Sorter': "Give me the ingredients, I'll predict the potion type!",
+  'The Self-Driving Eye': "Give me the pixels, I'll identify the road sign!",
+  'The Emotion Reader': "Give me the facial features, I'll predict the emotion!"
+};
+
+const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, loading, onRunModel, isTraining, experimentResult, experimentError, onRefreshScenarios }) => {
   const [interpretData, setInterpretData] = useState(null);
+  const [allPreviews, setAllPreviews] = useState({});
   
   // Animation states: 'selection', 'data_review', 'feeding_training', 'trained', 'robot_predict', 'error'
   const [animationStep, setAnimationStep] = useState('selection');
@@ -16,6 +38,45 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
       setAnimationStep('selection');
     }
   }, [selectedVariant]);
+
+  useEffect(() => {
+    if (!scenario) return;
+
+    const fetchAllPreviews = async () => {
+      // Create an array of fetch promises
+      const fetchPromises = (scenario.variants || []).map(async (variant) => {
+        // We check current state to avoid duplicate requests, but since it might be stale,
+        // we mainly rely on this for the initial batch.
+        try {
+          const response = await api.get(`/${scenario.model_type.toLowerCase()}/preview/`, {
+            params: { scenario_id: scenario.id, variant_name: variant.name }
+          });
+          return { name: variant.name, data: response.data };
+        } catch (err) {
+          console.error("Failed to fetch preview for", variant.name);
+          return null;
+        }
+      });
+
+      // Wait for all requests to finish at the same time
+      const results = await Promise.all(fetchPromises);
+      
+      // Update state once with all new data
+      setAllPreviews(prev => {
+        const next = { ...prev };
+        let updated = false;
+        results.forEach(res => {
+          if (res && res.data) {
+            next[res.name] = res.data;
+            updated = true;
+          }
+        });
+        return updated ? next : prev;
+      });
+    };
+    
+    fetchAllPreviews();
+  }, [scenario]);
 
   useEffect(() => {
     const fetchInterpret = async () => {
@@ -100,6 +161,23 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
     setAnimationStep('data_review');
   };
 
+  const handleDeleteVariant = async (e, variantId) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this custom dataset?')) {
+      try {
+        await api.delete(`/scenarios/variant/${variantId}/`);
+        if (onRefreshScenarios) {
+          onRefreshScenarios();
+        } else {
+          window.location.reload();
+        }
+      } catch (err) {
+        console.error("Failed to delete variant", err);
+        alert("Failed to delete variant: " + (err.response?.data?.error || err.message));
+      }
+    }
+  };
+
   const handleNextToTrain = () => {
     setAnimationStep('feeding_training');
     onRunModel();
@@ -143,6 +221,32 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
     return null;
   };
 
+  // Calculate Deep Analysis Stats
+  const deepStats = {};
+  if (chartData.length > 0 && featureCols.length > 0) {
+    featureCols.forEach(col => {
+      const values = chartData.map(row => row[col]).filter(v => typeof v === 'number');
+      if (values.length > 0) {
+        deepStats[col] = {
+          min: Math.min(...values),
+          max: Math.max(...values),
+          avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2),
+        };
+      }
+    });
+    // Add Y col if numeric
+    if (!isClassification && yCol) {
+      const yValues = chartData.map(row => row[yCol]).filter(v => typeof v === 'number');
+      if (yValues.length > 0) {
+        deepStats[yCol] = {
+          min: Math.min(...yValues),
+          max: Math.max(...yValues),
+          avg: (yValues.reduce((a, b) => a + b, 0) / yValues.length).toFixed(2),
+        };
+      }
+    }
+  }
+
   return (
     <div style={{ ...getBgStyle(), padding: '40px' }}>
       <AnimatePresence mode="popLayout">
@@ -157,34 +261,111 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
             style={{ maxWidth: '1000px', margin: '0 auto' }}
           >
             <h1 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>{scenario.title}</h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '40px' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '30px' }}>
               {scenario.description}
             </p>
 
             <h2 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--accent-purple)' }}>Select a Dataset Variant</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            
+            <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
               {scenario.variants?.map((variant, index) => (
                 <motion.div 
                   key={variant.name}
                   layoutId={`variant-card-${variant.name}`}
                   onClick={() => handleVariantClick(variant.name)}
-                  whileHover={{ translateY: -5 }}
+                  whileHover={{ scale: 1.05 }}
                   className="glass-panel"
                   style={{
-                    padding: '25px', cursor: 'pointer',
-                    borderTop: `3px solid ${index % 2 === 0 ? 'var(--accent-cyan)' : 'var(--accent-green)'}`,
-                    background: 'rgba(15, 23, 42, 0.7)',
-                    backdropFilter: 'blur(12px)',
+                    width: '260px',
+                    height: '320px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px',
+                    position: 'relative',
                     zIndex: 2
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                    <Database size={20} color="var(--text-secondary)" />
-                    <h3 style={{ fontSize: '1.2rem', margin: 0 }}>{variant.label}</h3>
+                  <div style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+                    <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'white', fontWeight: 'bold' }}>{variant.label}</h3>
                   </div>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-                    Load this specific data condition to see how the AI model reacts to it.
-                  </p>
+                  
+                  {variant.is_custom && (
+                    <button 
+                      onClick={(e) => handleDeleteVariant(e, variant.id)}
+                      style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.4)', borderRadius: '6px', cursor: 'pointer', padding: '6px', color: 'var(--accent-red)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Delete Dataset"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    {allPreviews[variant.name] ? (
+                      allPreviews[variant.name].columns.length === 3 && scenario.model_type.toLowerCase() === 'regression' ? (
+                        <Plot
+                          data={[
+                            {
+                              x: allPreviews[variant.name].rows.map(r => r[0]),
+                              y: allPreviews[variant.name].rows.map(r => r[1]),
+                              z: allPreviews[variant.name].rows.map(r => r[2]),
+                              type: 'scatter3d',
+                              mode: 'markers',
+                              marker: { color: '#00f0ff', size: 3 }
+                            }
+                          ]}
+                          layout={{
+                            autosize: true,
+                            paper_bgcolor: 'transparent',
+                            plot_bgcolor: 'transparent',
+                            scene: {
+                              xaxis: { title: allPreviews[variant.name].columns[0], backgroundcolor: 'transparent', gridcolor: '#333', tickfont: {size: 8, color: '#999'}, titlefont: {size: 10, color: '#fff'} },
+                              yaxis: { title: allPreviews[variant.name].columns[1], backgroundcolor: 'transparent', gridcolor: '#333', tickfont: {size: 8, color: '#999'}, titlefont: {size: 10, color: '#fff'} },
+                              zaxis: { title: allPreviews[variant.name].columns[2], backgroundcolor: 'transparent', gridcolor: '#333', tickfont: {size: 8, color: '#999'}, titlefont: {size: 10, color: '#fff'} },
+                              camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+                            },
+                            margin: { l: 0, r: 0, b: 0, t: 0 },
+                            font: { color: '#fff' },
+                            showlegend: false
+                          }}
+                          useResizeHandler={true}
+                          style={{ width: '100%', height: '100%' }}
+                          config={{ displayModeBar: false, staticPlot: true }}
+                        />
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                            <XAxis 
+                              dataKey={allPreviews[variant.name].columns[0]} 
+                              type={scenario.model_type.toLowerCase() === 'classification' && allPreviews[variant.name].columns.length === 2 ? 'category' : 'number'} 
+                              hide 
+                              domain={['dataMin - 10', 'dataMax + 10']}
+                            />
+                            <YAxis 
+                              dataKey={allPreviews[variant.name].columns[allPreviews[variant.name].columns.length - 1]} 
+                              type="number" 
+                              hide 
+                              domain={['dataMin - 10', 'dataMax + 10']}
+                            />
+                            <Scatter 
+                              data={allPreviews[variant.name].rows.map(row => {
+                                const obj = {};
+                                allPreviews[variant.name].columns.forEach((col, i) => { obj[col] = row[i]; });
+                                return obj;
+                              })} 
+                              fill="var(--accent-cyan)" 
+                            />
+                          </ScatterChart>
+                        </ResponsiveContainer>
+                      )
+                    ) : (
+                      <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+                    )}
+                  </div>
+                  <div style={{ padding: '20px', textAlign: 'center', marginTop: 'auto' }}>
+                    <span style={{ color: 'white', fontSize: '1.2rem', fontWeight: 'bold' }}>Graph</span>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -208,8 +389,7 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
                 >
                   <ArrowLeft size={16} /> Back to Datasets
                 </button>
-                <h1 style={{ fontSize: '2rem', marginBottom: '5px' }}>{scenario.variants.find(v => v.name === selectedVariant)?.label}</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>{scenario.variants.find(v => v.name === selectedVariant)?.description}</p>
+                <h1 style={{ fontSize: '2.5rem', marginBottom: '0' }}>{scenario.variants.find(v => v.name === selectedVariant)?.label}</h1>
               </div>
               <button 
                 className="btn-primary" 
@@ -228,60 +408,141 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
               style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', background: 'rgba(15, 23, 42, 0.9)', zIndex: 10, position: 'relative' }}
             >
               {previewData && !loading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ height: '350px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart margin={{ top: 20, right: 30, bottom: 25, left: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey={featureCols[0]} 
-                        name={featureCols[0]} 
-                        type="number" 
-                        stroke="var(--text-secondary)" 
-                        tick={{fontSize: 12}} 
-                        label={{ value: featureCols[0], position: 'bottom', offset: 5, fill: 'var(--text-secondary)', fontSize: 13, fontWeight: 'bold' }}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  
+                  {/* Graph Area */}
+                  <div style={{ height: '350px', marginBottom: '30px' }}>
+                    {featureCols.length === 2 && !isClassification ? (
+                      <Plot
+                        data={[
+                          {
+                            x: chartData.map(r => r[featureCols[0]]),
+                            y: chartData.map(r => r[featureCols[1]]),
+                            z: chartData.map(r => r[yCol]),
+                            type: 'scatter3d',
+                            mode: 'markers',
+                            marker: { color: '#00f0ff', size: 5, opacity: 0.8 },
+                            name: 'Data Points'
+                          }
+                        ]}
+                        layout={{
+                          autosize: true,
+                          paper_bgcolor: 'transparent',
+                          plot_bgcolor: 'transparent',
+                          scene: {
+                            xaxis: { title: featureCols[0], backgroundcolor: 'transparent', gridcolor: '#333' },
+                            yaxis: { title: featureCols[1], backgroundcolor: 'transparent', gridcolor: '#333' },
+                            zaxis: { title: yCol, backgroundcolor: 'transparent', gridcolor: '#333' },
+                            camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+                          },
+                          margin: { l: 0, r: 0, b: 0, t: 0 },
+                          font: { color: '#fff' }
+                        }}
+                        useResizeHandler={true}
+                        style={{ width: '100%', height: '100%' }}
+                        config={{ displayModeBar: false }}
                       />
-                      <YAxis 
-                        dataKey={isClassification && featureCols.length > 1 ? featureCols[1] : yCol} 
-                        name={isClassification && featureCols.length > 1 ? featureCols[1] : yCol} 
-                        type={isClassification && featureCols.length === 1 ? 'category' : 'number'} 
-                        stroke="var(--text-secondary)" 
-                        tick={{fontSize: 12}} 
-                        label={{ value: isClassification && featureCols.length > 1 ? featureCols[1] : yCol, angle: -90, position: 'insideLeft', offset: -5, fill: 'var(--text-secondary)', fontSize: 13, fontWeight: 'bold' }}
-                      />
-                      <Tooltip cursor={{strokeDasharray: '3 3'}} content={<CustomTooltip />} />
-                      
-                      {isClassification ? (
-                        Object.keys(groupedData).map((label, i) => (
-                          <Scatter 
-                            key={label} 
-                            name={String(label)} 
-                            data={groupedData[label]} 
-                            fill={COLORS[i % COLORS.length]} 
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart margin={{ top: 20, right: 30, bottom: 25, left: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                          <XAxis 
+                            dataKey={featureCols[0]} 
+                            name={featureCols[0]} 
+                            type="number" 
+                            stroke="var(--text-secondary)" 
+                            tick={{fontSize: 12}} 
+                            label={{ value: featureCols[0], position: 'bottom', offset: 5, fill: 'var(--text-secondary)', fontSize: 13, fontWeight: 'bold' }}
                           />
-                        ))
-                      ) : (
-                        <Scatter name="Data Points" data={chartData} fill="var(--accent-cyan)" />
-                      )}
-                    </ScatterChart>
-                  </ResponsiveContainer>
-                </motion.div>
-              )}
-
-              {interpretData && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
-                  <div style={{ padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <h3 style={{ marginBottom: '10px', color: 'var(--accent-purple)', fontSize: '1.1rem' }}>Data Overview</h3>
-                    {interpretData.column_descriptions.slice(0, 3).map(col => (
-                      <div key={col.name} style={{ marginBottom: '8px' }}>
-                        <strong style={{ fontSize: '0.9rem' }}>{col.name}</strong>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block' }}>{col.description}</span>
-                      </div>
-                    ))}
+                          <YAxis 
+                            dataKey={isClassification && featureCols.length > 1 ? featureCols[1] : yCol} 
+                            name={isClassification && featureCols.length > 1 ? featureCols[1] : yCol} 
+                            type={isClassification && featureCols.length === 1 ? 'category' : 'number'} 
+                            stroke="var(--text-secondary)" 
+                            tick={{fontSize: 12}} 
+                            label={{ value: isClassification && featureCols.length > 1 ? featureCols[1] : yCol, angle: -90, position: 'insideLeft', offset: -5, fill: 'var(--text-secondary)', fontSize: 13, fontWeight: 'bold' }}
+                          />
+                          <Tooltip cursor={{strokeDasharray: '3 3'}} content={<CustomTooltip />} />
+                          
+                          {isClassification ? (
+                            Object.keys(groupedData).map((label, i) => (
+                              <Scatter 
+                                key={label} 
+                                name={String(label)} 
+                                data={groupedData[label]} 
+                                fill={COLORS[i % COLORS.length]} 
+                              />
+                            ))
+                          ) : (
+                            <Scatter name="Data Points" data={chartData} fill="var(--accent-cyan)" />
+                          )}
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
-                  <div style={{ padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: interpretData.bias_analysis.severity !== 'None' ? '3px solid var(--accent-red)' : '3px solid var(--accent-green)' }}>
-                    <h3 style={{ marginBottom: '10px', color: interpretData.bias_analysis.severity !== 'None' ? 'var(--accent-red)' : 'var(--accent-green)', fontSize: '1.1rem' }}>Bias Check</h3>
-                    <strong style={{ fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>{interpretData.bias_analysis.bias_type}</strong>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>{interpretData.bias_analysis.description}</p>
+
+                  {/* Dataset Explanation */}
+                  <div style={{ padding: '25px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '20px', borderLeft: '5px solid var(--accent-cyan)' }}>
+                    <h3 style={{ fontSize: '1.6rem', color: 'white', marginBottom: '10px' }}>What is this data?</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.3rem', lineHeight: '1.6', margin: 0 }}>
+                      {scenario.variants.find(v => v.name === selectedVariant)?.description}
+                    </p>
+                  </div>
+
+                  {/* Deep Analysis Section */}
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h3 style={{ fontSize: '1.8rem', color: 'var(--accent-purple)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Activity size={28} /> Deep Analysis
+                    </h3>
+                    
+                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                      {/* Total Count */}
+                      <div style={{ flex: '1 1 200px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                          <Hash size={20} /> <span style={{ fontSize: '1.2rem' }}>Total Data Points</span>
+                        </div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{chartData.length}</div>
+                      </div>
+                      
+                      {/* Feature Stats */}
+                      {Object.keys(deepStats).map(colName => (
+                        <div key={colName} style={{ flex: '1 1 250px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '8px' }}>
+                          <div style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', marginBottom: '15px', fontSize: '1.4rem' }}>{colName}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '1.2rem' }}>
+                            <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}><Minimize2 size={16}/> Min</span>
+                            <span>{deepStats[colName].min}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '1.2rem' }}>
+                            <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}><Maximize2 size={16}/> Max</span>
+                            <span>{deepStats[colName].max}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
+                            <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}><Activity size={16}/> Avg</span>
+                            <span>{deepStats[colName].avg}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Interpretation Data (Bias/Descriptions) */}
+                    {interpretData && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+                        <div>
+                          <h4 style={{ marginBottom: '15px', color: 'var(--text-secondary)', fontSize: '1.2rem' }}>Dataset Context</h4>
+                          {interpretData.column_descriptions.slice(0, 2).map(col => (
+                            <div key={col.name} style={{ marginBottom: '12px' }}>
+                              <strong style={{ fontSize: '1.1rem' }}>{col.name}: </strong>
+                              <span style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>{col.description}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ borderLeft: interpretData.bias_analysis.severity !== 'None' ? '3px solid var(--accent-red)' : '3px solid var(--accent-green)', paddingLeft: '20px' }}>
+                          <h4 style={{ marginBottom: '15px', color: interpretData.bias_analysis.severity !== 'None' ? 'var(--accent-red)' : 'var(--accent-green)', fontSize: '1.2rem' }}>AI Bias Check</h4>
+                          <strong style={{ fontSize: '1.1rem', display: 'block', marginBottom: '5px' }}>{interpretData.bias_analysis.bias_type}</strong>
+                          <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: 0 }}>{interpretData.bias_analysis.description}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -403,7 +664,9 @@ const DataCanvas = ({ scenario, selectedVariant, onSelectVariant, previewData, l
                   </p>
 
                   <div style={{ background: 'rgba(0,0,0,0.4)', padding: '25px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
-                    <h4 style={{ color: 'var(--accent-green)', marginBottom: '15px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.9rem' }}>Ask a Question</h4>
+                    <h4 style={{ color: 'var(--accent-green)', marginBottom: '15px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.9rem' }}>
+                      {PREDICTION_PROMPTS[scenario.title] || "Ask a Question"}
+                    </h4>
                     <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
                       {featureCols.map(col => (
                         <input 

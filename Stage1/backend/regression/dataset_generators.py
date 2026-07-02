@@ -272,6 +272,44 @@ def bike_brake_test_slow() -> bytes:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 8. THE SOCIAL MEDIA TREND  (likes → comments)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def social_media_trend_perfect() -> bytes:
+    rng = np.random.default_rng(seed=70)
+    n = 40
+    likes = rng.uniform(10, 1000, n).round()
+    # approx 10% comments per like
+    comments = np.clip(0.1 * likes + rng.normal(0, 10, n), 0, None).round()
+    df = pd.DataFrame({'likes': likes.astype(int), 'comments': comments.astype(int)})
+    return _to_csv_bytes(df)
+
+def social_media_trend_disabled() -> bytes:
+    rng = np.random.default_rng(seed=71)
+    n = 39
+    likes = rng.uniform(10, 1000, n).round()
+    comments = np.clip(0.1 * likes + rng.normal(0, 10, n), 0, None).round()
+    # Add disabled post
+    likes = np.append(likes, 100000)
+    comments = np.append(comments, 0)
+    df = pd.DataFrame({'likes': likes.astype(int), 'comments': comments.astype(int)})
+    return _to_csv_bytes(df.sample(frac=1, random_state=42).reset_index(drop=True))
+
+def social_media_trend_bot() -> bytes:
+    rng = np.random.default_rng(seed=72)
+    n = 35
+    likes = rng.uniform(10, 1000, n).round()
+    comments = np.clip(0.1 * likes + rng.normal(0, 10, n), 0, None).round()
+    # Add bot posts
+    bot_likes = np.array([5, 12, 3, 20, 8])
+    bot_comments = np.array([5000, 8000, 12000, 4500, 9000])
+    likes = np.concatenate([likes, bot_likes])
+    comments = np.concatenate([comments, bot_comments])
+    df = pd.DataFrame({'likes': likes.astype(int), 'comments': comments.astype(int)})
+    return _to_csv_bytes(df.sample(frac=1, random_state=42).reset_index(drop=True))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # REGISTRY — maps (scenario_title_slug, variant_name) → generator function
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -303,6 +341,10 @@ GENERATORS = {
     ('bike_brake_test',       'perfect'):    bike_brake_test_perfect,
     ('bike_brake_test',       'icy'):        bike_brake_test_icy,
     ('bike_brake_test',       'slow'):       bike_brake_test_slow,
+
+    ('social_media_trend',    'perfect'):    social_media_trend_perfect,
+    ('social_media_trend',    'disabled'):   social_media_trend_disabled,
+    ('social_media_trend',    'bot'):        social_media_trend_bot,
 }
 
 

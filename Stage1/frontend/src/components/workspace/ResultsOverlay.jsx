@@ -32,7 +32,7 @@ const ResultsOverlay = ({ result, onClose }) => {
       padding: '40px'
     }}>
       <div className="glass-panel" style={{ 
-        width: '100%', maxWidth: '700px', 
+        width: '100%', maxWidth: '1200px', 
         background: 'rgba(25, 28, 41, 0.95)',
         boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
         position: 'relative',
@@ -77,64 +77,79 @@ const ResultsOverlay = ({ result, onClose }) => {
             </div>
           ) : null}
 
-          {result.success && result.output_image && (
-            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-              <img 
-                src={`data:image/jpeg;base64,${result.output_image}`} 
-                alt="Model Output Plot" 
-                style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
-              />
+          {/* Side-by-side layout for Image and QA */}
+          <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+            
+            {/* Left Column: Output Graph */}
+            <div style={{ flex: '1.2', display: 'flex', flexDirection: 'column' }}>
+              {result.success && result.output_image && (
+                <div style={{ textAlign: 'center', background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(0, 240, 255, 0.2)', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)' }}>
+                  <h3 style={{ margin: '0 0 15px 0', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <BrainCircuit size={24} /> Model Visualization
+                  </h3>
+                  <img 
+                    src={`data:image/jpeg;base64,${result.output_image}`} 
+                    alt="Model Output Plot" 
+                    style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}
+                  />
+                </div>
+              )}
             </div>
-          )}
 
-          {result.success && explanationData.fallback ? (
-            <div style={{ background: 'rgba(0, 240, 255, 0.05)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(0, 240, 255, 0.2)' }}>
-              {explanationData.fallback}
-            </div>
-          ) : result.success ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {Object.entries(QA_MAP).map(([key, info]) => {
-                const content = explanationData[key];
-                if (!content) return null;
-                const isExpanded = expandedSection === key;
+            {/* Right Column: QA Explanation */}
+            <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
+              {result.success && explanationData.fallback ? (
+                <div style={{ background: 'rgba(0, 240, 255, 0.05)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(0, 240, 255, 0.2)' }}>
+                  {explanationData.fallback}
+                </div>
+              ) : result.success ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <h3 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)' }}>AI Tutor Analysis</h3>
+                  {Object.entries(QA_MAP).map(([key, info]) => {
+                    const content = explanationData[key];
+                    if (!content) return null;
+                    const isExpanded = expandedSection === key;
 
-                return (
-                  <div key={key} style={{
-                    background: isExpanded ? 'rgba(0, 240, 255, 0.1)' : 'rgba(255, 255, 255, 0.02)',
-                    border: `1px solid ${isExpanded ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)'}`,
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease'
-                  }}>
-                    <div 
-                      onClick={() => setExpandedSection(isExpanded ? null : key)}
-                      style={{ 
-                        padding: '15px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', 
-                        justifyContent: 'space-between', color: isExpanded ? 'var(--accent-cyan)' : 'var(--text-primary)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '1.1rem', fontWeight: 'bold' }}>
-                        {info.icon}
-                        {info.title}
-                      </div>
-                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                    </div>
-                    
-                    {isExpanded && (
-                      <div style={{ 
-                        padding: '0 20px 20px 55px', 
-                        fontSize: '1rem', 
-                        lineHeight: '1.6', 
-                        color: 'var(--text-secondary)' 
+                    return (
+                      <div key={key} style={{
+                        background: isExpanded ? 'rgba(0, 240, 255, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                        border: `1px solid ${isExpanded ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)'}`,
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease'
                       }}>
-                        {content}
+                        <div 
+                          onClick={() => setExpandedSection(isExpanded ? null : key)}
+                          style={{ 
+                            padding: '15px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', 
+                            justifyContent: 'space-between', color: isExpanded ? 'var(--accent-cyan)' : 'var(--text-primary)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                            {info.icon}
+                            {info.title}
+                          </div>
+                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                        
+                        {isExpanded && (
+                          <div style={{ 
+                            padding: '0 20px 20px 55px', 
+                            fontSize: '1rem', 
+                            lineHeight: '1.6', 
+                            color: 'var(--text-secondary)' 
+                          }}>
+                            {content}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
-          ) : null}
+
+          </div>
 
         </div>
 
